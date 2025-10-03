@@ -1,0 +1,1 @@
+// sessions routes placeholder\nconst express = require('express');\nconst router = express.Router();\n\n// TODO: list sessions\nrouter.get('/', (req,res)=>{res.json([])});\n\nmodule.exports = router;
