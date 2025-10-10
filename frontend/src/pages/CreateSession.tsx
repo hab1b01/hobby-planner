@@ -14,6 +14,8 @@ export default function CreateSession() {
   const [email, setEmail] = useState("");
   const [codes, setCodes] = useState<{ managementCode?: string; privateCode?: string; id?: string } | null>(null);
   const [error, setError] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,9 +60,78 @@ export default function CreateSession() {
     }
   };
 
+  const getAiSuggestion = async () => {
+    setLoadingSuggestion(true);
+    try {
+      const titleParam = title ? `?title=${encodeURIComponent(title)}` : '';
+      const res = await fetch(`${API}/api/ai/suggest${titleParam}`);
+      const data = await res.json();
+      setAiSuggestion(data.suggestion);
+    } catch (err) {
+      alert("Failed to get AI suggestion");
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
+
+  const applySuggestion = () => {
+    if (!aiSuggestion) return;
+    setTitle(aiSuggestion.title || "");
+    setDescription(aiSuggestion.description || "");
+    setAiSuggestion(null);
+  };
+
   return (
     <div className="create-session-container">
       <h2>Create Session</h2>
+      
+      <div style={{ marginBottom: 20, padding: 15, background: "#f0f8ff", borderRadius: 8 }}>
+        <div style={{ marginBottom: 10 }}>
+          <p style={{ margin: 0, fontSize: "0.9em", color: "#555" }}>
+            💡 <strong>Tip:</strong> Enter a session title above, then click "Get AI Suggestion" to generate a structured plan for it.
+          </p>
+        </div>
+        <button 
+          type="button"
+          onClick={getAiSuggestion} 
+          disabled={loadingSuggestion}
+          style={{ 
+            padding: "10px 20px", 
+            cursor: loadingSuggestion ? "not-allowed" : "pointer",
+            background: "#3498db",
+            color: "white",
+            border: "none",
+            borderRadius: 4,
+            fontWeight: 500
+          }}
+        >
+          {loadingSuggestion ? "🤔 Generating..." : "🤖 Get AI Suggestion"}
+        </button>
+        
+        {aiSuggestion && (
+          <div style={{ marginTop: 15, padding: 15, background: "white", borderRadius: 8, border: "2px solid #3498db" }}>
+            <h4 style={{ marginTop: 0, color: "#2c3e50" }}>✨ AI Suggested Session:</h4>
+            <p style={{ margin: "8px 0" }}><strong>{aiSuggestion.title}</strong></p>
+            <p style={{ margin: "8px 0", color: "#555" }}>{aiSuggestion.description}</p>
+            <button 
+              type="button"
+              onClick={applySuggestion} 
+              style={{ 
+                marginTop: 10,
+                padding: "8px 16px",
+                background: "#27ae60",
+                color: "white",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer"
+              }}
+            >
+              ✓ Use This Suggestion
+            </button>
+          </div>
+        )}
+      </div>
+
       <form className="create-session-form" onSubmit={submit}>
         <div className="form-group">
           <label>Title</label>
@@ -128,7 +199,7 @@ export default function CreateSession() {
               </div>
               <div style={{ fontFamily: "monospace", marginTop: 6 }}>{codes.managementCode}</div>
             </div>
-            <button className="btn" onClick={() => copy(codes.managementCode)}>
+            <button className="btn" type="button" onClick={() => copy(codes.managementCode)}>
               Copy
             </button>
           </div>
@@ -148,7 +219,7 @@ export default function CreateSession() {
                 </div>
                 <div style={{ fontFamily: "monospace", marginTop: 6 }}>{codes.privateCode}</div>
               </div>
-              <button className="btn" onClick={() => copy(codes.privateCode)}>
+              <button className="btn" type="button" onClick={() => copy(codes.privateCode)}>
                 Copy
               </button>
             </div>
@@ -169,7 +240,7 @@ export default function CreateSession() {
                 </div>
                 <div style={{ fontFamily: "monospace", marginTop: 6 }}>{codes.id}</div>
               </div>
-              <button className="btn" onClick={() => copy(codes.id)}>
+              <button className="btn" type="button" onClick={() => copy(codes.id)}>
                 Copy
               </button>
             </div>
