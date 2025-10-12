@@ -1,30 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/CreateSession.css";
-
-type SessionType = {
-  _id: string;
-  title: string;
-  description?: string;
-  date?: string;
-  time?: string;
-  maxParticipants?: number;
-  type?: "public" | "private";
-  location?: string;
-  email?: string;
-};
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
-export default function EditSession() {
-  const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+export default function CreateSession() {
   const navigate = useNavigate();
-
-  // use mg code if provided, else reuse stored access code for reading
-  const accessCode = searchParams.get("code") || localStorage.getItem("accessCode") || "";
-
-  const [loading, setLoading] = useState(true);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -35,55 +16,22 @@ export default function EditSession() {
   const [location, setLocation] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-
-  const fetchForEdit = async () => {
-    if (!id) return;
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`${API}/api/sessions/${id}?code=${encodeURIComponent(accessCode)}`, {
-        headers: accessCode ? { "x-access-code": accessCode } : undefined,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "Failed to load session");
-        setLoading(false);
-        return;
-      }
-      const data: SessionType = await res.json();
-      setTitle(data.title || "");
-      setDescription(data.description || "");
-      setDate(data.date || "");
-      setTime(data.time || "");
-      setMaxParticipants(typeof data.maxParticipants === "number" ? data.maxParticipants : "");
-      setType((data.type as "public" | "private") || "public");
-      setLocation(data.location || "");
-      setEmail(data.email || "");
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchForEdit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, searchParams]);
+  const [managementCode, setManagementCode] = useState("");
+  const [privateCode, setPrivateCode] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id) return;
     setError("");
+    
+    if (!title.trim()) {
+      setError("Title is required");
+      return;
+    }
+
     try {
-      // PUT must be authorized with management code
-      const mg = searchParams.get("code") || "";
-      const res = await fetch(`${API}/api/sessions/${id}?code=${encodeURIComponent(mg)}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-access-code": mg || accessCode,
-        },
+      const res = await fetch(`${API}/api/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
           description,
@@ -95,49 +43,72 @@ export default function EditSession() {
           email,
         }),
       });
+
       const data = await res.json();
+      
       if (!res.ok) {
-        setError(data.error || "Failed to save");
+        setError(data.error || "Failed to create session");
         return;
       }
-      alert("Notification: Session updated.");
-      navigate(`/sessions/${id}`);
-    } catch {
-      setError("Network error");
+
+      
+      setManagementCode(data.managementCode || "");
+      setPrivateCode(data.privateCode || "");
+
+      alert(
+        `Session created!\n\nManagement Code: ${data.managementCode}` +
+        (data.privateCode ? `\nPrivate Code: ${data.privateCode}` : "")
+      );
+
+      
+      navigate(`/sessions/${data._id}?code=${data.managementCode}`);
+    } catch (err) {
+      setError("Network error - please check your connection");
+      console.error(err);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="create-session-container">
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="create-session-container">
-      <h2>Edit Session</h2>
+      <h2>Create New Session</h2>
 
       <form className="create-session-form" onSubmit={handleSubmit}>
         <div className="form-group">
-          <label>Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <label>Title *</label>
+          <input 
+            value={title} 
+            onChange={(e) => setTitle(e.target.value)} 
+            required 
+            placeholder="e.g., Weekly Football Practice"
+          />
         </div>
 
         <div className="form-group">
           <label>Description</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea 
+            value={description} 
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What will happen in this session?"
+            rows={4}
+          />
         </div>
 
         <div className="form-row">
           <div className="form-group small">
             <label>Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input 
+              type="date" 
+              value={date} 
+              onChange={(e) => setDate(e.target.value)} 
+            />
           </div>
           <div className="form-group small">
             <label>Time</label>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <input 
+              type="time" 
+              value={time} 
+              onChange={(e) => setTime(e.target.value)} 
+            />
           </div>
         </div>
 
@@ -149,11 +120,15 @@ export default function EditSession() {
               min="0"
               value={maxParticipants as any}
               onChange={(e) => setMaxParticipants(e.target.value ? Number(e.target.value) : "")}
+              placeholder="0 = unlimited"
             />
           </div>
           <div className="form-group small">
             <label>Type</label>
-            <select value={type} onChange={(e) => setType(e.target.value as "public" | "private")}>
+            <select 
+              value={type} 
+              onChange={(e) => setType(e.target.value as "public" | "private")}
+            >
               <option value="public">Public</option>
               <option value="private">Private</option>
             </select>
@@ -162,21 +137,49 @@ export default function EditSession() {
 
         <div className="form-group">
           <label>Location (address/place)</label>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} />
+          <input 
+            value={location} 
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g., Central Park, NYC"
+          />
         </div>
 
         <div className="form-group">
           <label>Your email (optional)</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input 
+            type="email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+          />
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn" type="submit">Save Changes</button>
-          <button type="button" className="btn btn-danger" onClick={() => navigate(`/sessions/${id}`)}>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button className="btn" type="submit">Create Session</button>
+          <button 
+            type="button" 
+            className="btn btn-danger" 
+            onClick={() => navigate("/sessions")}
+          >
             Cancel
           </button>
         </div>
       </form>
+
+      {managementCode || privateCode ? (
+        <div className="codes-box">
+          {managementCode && (
+            <div>
+              <strong>Management Code:</strong> {managementCode}
+            </div>
+          )}
+          {privateCode && (
+            <div>
+              <strong>Private Code:</strong> {privateCode}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {error && <div className="codes-box error">{error}</div>}
     </div>

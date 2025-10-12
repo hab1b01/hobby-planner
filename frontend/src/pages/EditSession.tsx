@@ -21,7 +21,7 @@ export default function EditSession() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // use mg code if provided, else reuse stored access code for reading
+  
   const accessCode = searchParams.get("code") || localStorage.getItem("accessCode") || "";
 
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export default function EditSession() {
 
   useEffect(() => {
     fetchForEdit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [id, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,7 +76,7 @@ export default function EditSession() {
     if (!id) return;
     setError("");
     try {
-      // PUT must be authorized with management code
+      
       const mg = searchParams.get("code") || "";
       const res = await fetch(`${API}/api/sessions/${id}?code=${encodeURIComponent(mg)}`, {
         method: "PUT",

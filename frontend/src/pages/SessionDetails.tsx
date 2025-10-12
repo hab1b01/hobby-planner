@@ -33,7 +33,7 @@ export default function SessionDetails() {
   const [privateInput, setPrivateInput] = useState("");
   const [mapUrl, setMapUrl] = useState<string | null>(null);
 
-  // persist any access code from the URL
+  
   useEffect(() => {
     const codeFromUrl = searchParams.get("code");
     if (codeFromUrl) {
@@ -111,7 +111,7 @@ export default function SessionDetails() {
       .catch(() => alert("Copy failed"));
   };
 
-  // ---- Invite links ----
+  // Invite links 
   const copyInviteLink = () => {
     const base = window.location.origin;
     const link = `${base}/sessions/${id}`;

@@ -45,7 +45,7 @@ export default function SessionsList() {
     fetchSessions();
   }, []);
 
-  // helper to parse date string to Date (00:00)
+  
   const parseDate = (d?: string) => {
     if (!d) return null;
     const dt = new Date(d);
@@ -59,14 +59,14 @@ export default function SessionsList() {
   }, []);
 
   const filtered = useMemo(() => {
-    // Apply date range filtering client-side
+    
     const from = fromDate ? parseDate(fromDate) : null;
     const to = toDate ? parseDate(toDate) : null;
 
     return sessions.filter((s) => {
       const sd = parseDate(s.date);
       if (!sd) {
-        // Keep sessions without valid date in upcoming by default
+        
         return true;
       }
       if (from && sd < from) return false;
@@ -90,7 +90,7 @@ export default function SessionsList() {
       return sd < today;
     });
   }, [filtered, today]);
-
+// AI Suggestion
   const handleSuggest = async () => {
     try {
       const res = await fetch(`${API}/api/ai/suggest`);
