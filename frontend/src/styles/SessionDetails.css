@@ -1,62 +1,70 @@
 .session-details {
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 2rem;
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    max-width: 760px;
+    margin: 28px auto;
+    padding: 18px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
 }
 
 .session-details h2 {
-  margin-bottom: 1rem;
-  color: #333;
-  font-size: 2rem;
+    margin: 0 0 8px 0;
+    font-size: 22px;
 }
 
-.session-details p {
-  margin: 0.75rem 0;
-  font-size: 1.1rem;
-  color: #555;
-  line-height: 1.6;
+.session-meta {
+    color: #666;
+    margin-bottom: 12px;
 }
 
-.session-details p:first-of-type {
-  font-size: 1rem;
-  color: #666;
-  margin-bottom: 1.5rem;
+.attendees-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px 0;
 }
 
-.session-details button {
-  margin-top: 1.5rem;
-  margin-right: 1rem;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+.attendee-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #f0f0f0;
 }
 
-.session-details button:first-of-type {
-  background-color: #28a745;
-  color: white;
+.remove-small {
+    background: transparent;
+    border: none;
+    color: #c0392b;
+    cursor: pointer;
 }
 
-.session-details button:first-of-type:hover {
-  background-color: #218838;
+.controls {
+    display: grid;
+    gap: 10px;
 }
 
-.session-details button:last-of-type {
-  background-color: #dc3545;
-  color: white;
+.inline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
-.session-details button:last-of-type:hover {
-  background-color: #c82333;
+.text-input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #dcdcdc;
 }
 
-.session-details button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-  opacity: 0.6;
+.button-group {
+    display: flex;
+    gap: 8px;
+}
+
+.codes-box.error {
+    border-color: #f5c2c7;
+    background: #fff5f6;
+    color: #7a171b;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 12px;
 }

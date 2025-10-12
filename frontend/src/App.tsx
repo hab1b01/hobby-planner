@@ -1,27 +1,32 @@
-import React from "react";
 import { Routes, Route, Link } from "react-router-dom";
-import Home from "./pages/Home";
-import CreateSession from "./pages/CreateSession";
 import SessionsList from "./pages/SessionsList";
+import CreateSession from "./pages/CreateSession";
 import SessionDetails from "./pages/SessionDetails";
-import "./App.css";
+import EditSession from "./pages/EditSession"; // <-- add
+import "./index.css";
 
-const App: React.FC = () => {
+export default function App() {
   return (
-    <>
-      <nav>
-        <Link to="/">Home</Link> | 
-        <Link to="/sessions">Sessions</Link> | 
-        <Link to="/create">Create Session</Link>
-      </nav>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/create" element={<CreateSession />} />
-        <Route path="/sessions" element={<SessionsList />} />
-        <Route path="/session/:id" element={<SessionDetails />} />
-      </Routes>
-    </>
-  );
-};
+    <div className="app-root">
+      <header className="topbar">
+        <div className="container topbar-inner">
+          <h1 className="brand">Hobby Session Planner</h1>
+          <nav>
+            <Link className="nav-link" to="/sessions">All Sessions</Link>
+            <Link className="nav-link" to="/create">Create Session</Link>
+          </nav>
+        </div>
+      </header>
 
-export default App;
+      <main className="container" style={{ paddingTop: 20 }}>
+        <Routes>
+          <Route path="/" element={<SessionsList />} />
+          <Route path="/sessions" element={<SessionsList />} />
+          <Route path="/sessions/:id" element={<SessionDetails />} />
+          <Route path="/sessions/:id/edit" element={<EditSession />} /> {/* <-- new route */}
+          <Route path="/create" element={<CreateSession />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
