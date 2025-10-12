@@ -1,166 +1,184 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const Session = require('../models/Session');
-const { genManagementCode, genPrivateCode } = require('../utils/codes');
+const Session = require("../models/Session");
+const crypto = require("crypto");
 
-router.get('/', async (req, res) => {
+
+function genCode(len = 10) {
+  return crypto
+    .randomBytes(Math.ceil(len / 2))
+    .toString("hex")
+    .slice(0, len);
+}
+
+
+router.get("/", async (req, res) => {
   try {
-    const sessions = await Session.find();
+    const sessions = await Session.find({ type: "public" }).sort({
+      date: 1,
+      time: 1,
+    });
     res.json(sessions);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch sessions' });
+  } catch (e) {
+    console.error("List sessions error:", e);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-router.post('/', async (req, res) => {
+
+router.post("/", async (req, res) => {
   try {
-    const managementCode = genManagementCode();
-    const privateCode = req.body.type === 'private' ? genPrivateCode() : null;
-    
-    const session = new Session({
-      ...req.body,
+    const {
+      title,
+      description,
+      date,
+      time,
+      maxParticipants,
+      type = "public",
+      location,
+      email,
+    } = req.body;
+
+    const managementCode = genCode(10);
+    const privateCode = type === "private" ? genCode(10) : null;
+
+    const s = new Session({
+      title,
+      description,
+      date,
+      time,
+      maxParticipants,
+      type,
+      location,
+      email,
       managementCode,
       privateCode,
-      contactEmail: req.body.email || ''
     });
-    
-    await session.save();
-    res.status(201).json(session);
-  } catch (err) {
-    console.error('Error creating session:', err);
-    res.status(400).json({ error: 'Failed to create session' });
-  }
-});
 
-router.get('/:id', async (req, res) => {
-  try {
-    const session = await Session.findById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-    
-    if (session.type === 'private' && session.privateCode !== req.query.code) {
-      return res.status(403).json({ error: 'Private session - code required' });
-    }
-    
-    res.json(session);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+    await s.save();
 
-router.put('/:id', async (req, res) => {
-  try {
-    const session = await Session.findById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
     
-    if (session.managementCode !== req.query.code) {
-      return res.status(403).json({ error: 'Invalid management code' });
+    if (email) {
+      console.log(
+        `MOCK EMAIL → ${email}: Management Code: ${managementCode} ${
+          privateCode ? `, Private Code: ${privateCode}` : ""
+        }`
+      );
     }
-    
-    Object.assign(session, req.body);
-    await session.save();
-    res.json({ success: true, session });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+    console.log(`NOTIFY: Session "${title}" created.`);
 
-router.delete('/:id', async (req, res) => {
-  try {
-    const session = await Session.findById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-    
-    if (session.managementCode !== req.query.code) {
-      return res.status(403).json({ error: 'Invalid management code' });
-    }
-    
-    await Session.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Session deleted' });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-router.post("/:id/attend", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const session = await Session.findById(id);
-    
-    if (!session) {
-      return res.status(404).json({ error: "Session not found" });
-    }
-
-    const attendanceCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    
-    session.attendees.push({ 
-      name: req.body.name || "Guest", 
-      attendanceCode 
+    res.json({
+      _id: s._id,
+      managementCode: s.managementCode,
+      privateCode: s.privateCode,
     });
-    
-    await session.save();
-    
-    res.json({ 
-      message: "Successfully joined session", 
-      attendanceCode 
-    });
-  } catch (err) {
+  } catch (e) {
+    console.error("Error creating session:", e);
+    res.status(500).json({ error: "Failed to create session" });
+  }
+});
+
+
+router.get("/:id", async (req, res) => {
+  try {
+    const s = await Session.findById(req.params.id);
+    if (!s) return res.status(404).json({ error: "Not found" });
+
+    const queryCode = (req.query.code || "").toString().trim();
+    const headerCode = (req.headers["x-access-code"] || "").toString().trim();
+    const incoming = queryCode || headerCode;
+
+    if (s.type === "private") {
+      const allowed =
+        incoming === s.privateCode || incoming === s.managementCode;
+
+      if (!allowed) {
+        return res
+          .status(403)
+          .json({ error: "Private session. Code required." });
+      }
+    }
+
+    res.json(s);
+  } catch (e) {
+    console.error("Get session error:", e);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-router.post("/:id/unattend", async (req, res) => {
+//ai helper 
+router.put("/:id", async (req, res) => {
   try {
-    const id = req.params.id;
-    const { attendanceCode } = req.body;
-    
-    const session = await Session.findById(id);
-    
-    if (!session) {
-      return res.status(404).json({ error: "Session not found" });
+    const s = await Session.findById(req.params.id);
+    if (!s) return res.status(404).json({ error: "Not found" });
+
+    const queryCode = (req.query.code || "").toString().trim();
+    const headerCode = (req.headers["x-access-code"] || "").toString().trim();
+    const incoming = queryCode || headerCode;
+
+    if (incoming !== s.managementCode) {
+      return res.status(403).json({ error: "Management code invalid" });
     }
 
-    session.attendees = session.attendees.filter(
-      (attendee) => attendee.attendanceCode !== attendanceCode
-    );
-    
-    await session.save();
-    
-    res.json({ message: "Successfully left session" });
-  } catch (err) {
+    const {
+      title,
+      description,
+      date,
+      time,
+      maxParticipants,
+      type,
+      location,
+      email,
+    } = req.body;
+
+    s.title = title ?? s.title;
+    s.description = description ?? s.description;
+    s.date = date ?? s.date;
+    s.time = time ?? s.time;
+    s.maxParticipants = maxParticipants ?? s.maxParticipants;
+    s.type = type ?? s.type;
+    s.location = location ?? s.location;
+    s.email = email ?? s.email;
+
+    // If turned into private and has no privateCode yet, generate one
+    if (s.type === "private" && !s.privateCode) {
+      s.privateCode = genCode(10);
+    }
+    // If turned public, clear privateCode
+    if (s.type === "public") s.privateCode = null;
+
+    await s.save();
+
+    console.log(`NOTIFY: Session "${s.title}" updated.`);
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Update session error:", e);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-router.get("/:id/manage", async (req, res) => {
+/**
+ * DELETE /api/sessions/:id
+ * Delete requires management code.
+ */
+router.delete("/:id", async (req, res) => {
   try {
-    const id = req.params.id;
-    const { code } = req.query;
-    const session = await Session.findById(id);
-    if (!session) return res.status(404).json({ error: "Not found" });
-    if (session.managementCode !== code)
-      return res.status(403).json({ error: "Invalid code" });
-    res.json(session);
-  } catch (err) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
+    const s = await Session.findById(req.params.id);
+    if (!s) return res.status(404).json({ error: "Not found" });
 
-router.delete("/:id/manage", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { code } = req.query;
-    const session = await Session.findById(id);
-    if (!session) return res.status(404).json({ error: "Not found" });
-    if (session.managementCode !== code)
-      return res.status(403).json({ error: "Invalid code" });
-    await Session.findByIdAndDelete(id);
-    res.json({ message: "Deleted" });
-  } catch (err) {
+    const queryCode = (req.query.code || "").toString().trim();
+    const headerCode = (req.headers["x-access-code"] || "").toString().trim();
+    const incoming = queryCode || headerCode;
+
+    if (incoming !== s.managementCode) {
+      return res.status(403).json({ error: "Management code invalid" });
+    }
+
+    await s.deleteOne();
+    console.log(`NOTIFY: Session "${s.title}" deleted.`);
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Delete session error:", e);
     res.status(500).json({ error: "Server error" });
   }
 });

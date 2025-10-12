@@ -1,11 +1,13 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const AttendeeSchema = new mongoose.Schema({
-  id: { type: String, required: false }, // Optional ID field from second schema
-  name: { type: String, required: true },
-  attendanceCode: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-});
+const AttendeeSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: "Anonymous" },
+    attendanceCode: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const SessionSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -22,4 +24,4 @@ const SessionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('Session', SessionSchema);
+module.exports = mongoose.model("Session", SessionSchema);

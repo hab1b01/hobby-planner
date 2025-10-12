@@ -1,83 +1,111 @@
 const express = require("express");
-const router = express.Router();
-const mongoose = require("mongoose");
+const crypto = require("crypto");
 const Session = require("../models/Session");
-const { genAttendanceCode } = require("../utils/codes");
 
+const router = express.Router();
+
+const gen = (n = 10) => crypto.randomBytes(16).toString("hex").slice(0, n);
+
+/**
+ * POST /api/attendance/:id/join
+ * body: { name }
+ * returns: { attendanceCode }
+ */
 router.post("/:id/join", async (req, res) => {
   try {
-    const id = req.params.id;
-    if (!mongoose.Types.ObjectId.isValid(id))
-      return res.status(400).json({ error: "invalid id" });
-    const { name } = req.body;
-    if (!name) return res.status(400).json({ error: "name required" });
-    const s = await Session.findById(id);
+    const s = await Session.findById(req.params.id);
     if (!s) return res.status(404).json({ error: "Not found" });
-    if (s.maxParticipants && s.attendees.length >= s.maxParticipants)
+
+    if (s.maxParticipants && s.attendees.length >= s.maxParticipants) {
       return res.status(400).json({ error: "Session is full" });
-    const attendanceCode = genAttendanceCode();
+    }
+
+    const name = (req.body?.name || "").trim();
+    if (!name) return res.status(400).json({ error: "Name required" });
+
+    const attendanceCode = gen(10);
     s.attendees.push({ name, attendanceCode });
     await s.save();
-    res.json({ success: true, attendanceCode });
+
+    // mock "email" for attendees if session.email is set (optional)
+    console.log(
+      `[mock-email] attendance -> ${name} joined ${s._id}. ` +
+        `Attendance code: ${attendanceCode}`
+    );
+
+    return res.json({ attendanceCode });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "server error" });
+    console.error("Join error:", err);
+    return res.status(500).json({ error: "Join failed" });
   }
 });
 
+/**
+ * POST /api/attendance/:id/leave
+ * body: { code }
+ */
 router.post("/:id/leave", async (req, res) => {
   try {
-    const id = req.params.id;
-    if (!mongoose.Types.ObjectId.isValid(id))
-      return res.status(400).json({ error: "invalid id" });
-    const { code } = req.body;
-    if (!code)
-      return res.status(400).json({ error: "attendance code required" });
-    const s = await Session.findById(id);
+    const s = await Session.findById(req.params.id);
     if (!s) return res.status(404).json({ error: "Not found" });
-    const before = s.attendees.length;
-    s.attendees = s.attendees.filter((a) => a.attendanceCode !== code);
-    if (s.attendees.length === before)
-      return res.status(400).json({ error: "invalid attendance code" });
+
+    const code = (req.body?.code || "").trim();
+    if (!code) return res.status(400).json({ error: "Code required" });
+
+    const idx = s.attendees.findIndex((a) => a.attendanceCode === code);
+    if (idx === -1) return res.status(400).json({ error: "Invalid code" });
+
+    s.attendees.splice(idx, 1);
     await s.save();
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "server error" });
+    console.error("Leave error:", err);
+    return res.status(500).json({ error: "Leave failed" });
   }
 });
 
+/**
+ * POST /api/attendance/:id/remove
+ * body: { code: managementCode, attendanceCode?, attendeeName? }
+ */
 router.post("/:id/remove", async (req, res) => {
   try {
-    const id = req.params.id;
-    if (!mongoose.Types.ObjectId.isValid(id))
-      return res.status(400).json({ error: "invalid id" });
-    const { code, attendeeName, attendanceCode } = req.body;
-    if (!code)
-      return res.status(400).json({ error: "management code required" });
-    const s = await Session.findById(id);
+    const s = await Session.findById(req.params.id);
     if (!s) return res.status(404).json({ error: "Not found" });
-    if (code !== s.managementCode)
-      return res.status(403).json({ error: "management code invalid" });
-    const before = s.attendees.length;
-    if (attendanceCode) {
-      s.attendees = s.attendees.filter(
-        (a) => a.attendanceCode !== attendanceCode
-      );
-    } else if (attendeeName) {
-      s.attendees = s.attendees.filter((a) => a.name !== attendeeName);
-    } else {
-      return res
-        .status(400)
-        .json({ error: "attendeeName or attendanceCode required" });
+
+    const mg = (req.body?.code || "").trim();
+    if (mg !== s.managementCode) {
+      return res.status(403).json({ error: "Management code required" });
     }
-    if (s.attendees.length === before)
-      return res.status(400).json({ error: "attendee not found" });
+
+    const { attendanceCode, attendeeName } = req.body || {};
+    let changed = false;
+
+    if (attendanceCode) {
+      const i = s.attendees.findIndex(
+        (a) => a.attendanceCode === attendanceCode
+      );
+      if (i !== -1) {
+        s.attendees.splice(i, 1);
+        changed = true;
+      }
+    } else if (attendeeName) {
+      const i = s.attendees.findIndex((a) => a.name === attendeeName);
+      if (i !== -1) {
+        s.attendees.splice(i, 1);
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return res.status(400).json({ error: "Attendee not found" });
+    }
+
     await s.save();
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "server error" });
+    console.error("Remove error:", err);
+    return res.status(500).json({ error: "Remove failed" });
   }
 });
 

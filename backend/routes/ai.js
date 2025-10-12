@@ -5,7 +5,7 @@ const Session = require("../models/Session");
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
-
+//ai helper
 const templatesForTitle = [
   {
     titleTpl: (s) => s,
@@ -28,7 +28,7 @@ const templatesForTitle = [
       `Goal setting (5m), demonstration (10m), repeated practice rounds (3 x 12m) focusing on ${s}, final recap (6m).`,
   },
 ];
-
+//ai helper
 const followupTemplates = [
   {
     titleTpl: (s) => `Follow-up: ${s}`,
