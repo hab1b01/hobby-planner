@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/CreateSession.css";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API = import.meta.env.VITE_API_URL || "https://hobby-planner-4.onrender.com";
 
 export default function CreateSession() {
   const navigate = useNavigate();
