@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import "../styles/sessionsList.css";
+import "../styles/SessionsList.css";
 
 type Attendee = {
   name: string;
